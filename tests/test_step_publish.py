@@ -99,3 +99,31 @@ def test_manifest_lists_infra_routers_source(cfg, config_path):
     manifest = json.loads(Path(result.outputs["manifest"]).read_text())
     assert manifest["sources"]["infra_routers"]["items"] == 4
     assert manifest["sources"]["infra_routers"]["system"] == "nautobot"
+
+
+def write_previous_devices(cfg, keys):
+    out = cfg.paths.output
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "devices-20261008.json").write_text(json.dumps({"devices": [{"key": k} for k in keys]}))
+    os.symlink("devices-20261008.json", out / "devices-latest.json")
+
+
+def test_new_and_missing_devices_are_counted(cfg, config_path):
+    write_previous_devices(cfg, ["pe-01", "gone-01"])
+    parse_first(cfg)
+    result = run_publish(cfg, NOW, config_path)
+    assert result.counts["new_devices"] == 2      # 203.0.113.5, cpe-01
+    assert result.counts["missing_devices"] == 1  # gone-01
+
+
+def test_no_previous_devices_no_change_counts(cfg, config_path):
+    parse_first(cfg)
+    result = run_publish(cfg, NOW, config_path)
+    assert "new_devices" not in result.counts and "missing_devices" not in result.counts
+
+
+def test_new_missing_counts_skipped_on_same_file(cfg, config_path):
+    parse_first(cfg)
+    run_publish(cfg, NOW, config_path)
+    result = run_publish(cfg, NOW, config_path)
+    assert "new_devices" not in result.counts

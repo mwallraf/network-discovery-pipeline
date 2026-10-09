@@ -38,6 +38,24 @@ def _sources(cfg: Config) -> dict[str, dict]:
     return sources
 
 
+def _device_keys(path: Path) -> set[str] | None:
+    try:
+        return {str(device["key"]) for device in json.loads(path.read_text()).get("devices", [])}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _change_counts(previous_link: Path, current: Path, devices: list[dict]) -> dict[str, int]:
+    """New/missing device keys against the previous published devices file, if there is one."""
+    if not previous_link.exists() or previous_link.resolve() == current.resolve():
+        return {}
+    previous = _device_keys(previous_link)
+    if previous is None:
+        return {}
+    keys = {str(device.get("key")) for device in devices}
+    return {"new_devices": len(keys - previous), "missing_devices": len(previous - keys)}
+
+
 def run_publish(cfg: Config, now: datetime, config_path: Path) -> StepResult:
     result = StepResult("publish")
     devices_path = _devices_file(cfg)
@@ -50,6 +68,7 @@ def run_publish(cfg: Config, now: datetime, config_path: Path) -> StepResult:
     date = f"{now:%Y%m%d}"
     written: list[Path] = []
     links: list[tuple[str, Path]] = []  # moved only after every file is written
+    changes = _change_counts(out / "devices-latest.json", devices_path, devices)
 
     if cfg.outputs.devices_json:
         link = out / "devices-latest.json"
@@ -75,7 +94,7 @@ def run_publish(cfg: Config, now: datetime, config_path: Path) -> StepResult:
     for path in written:
         result.warnings.extend(apply_perms(path, cfg.housekeeping))
 
-    result.counts = {"devices": len(devices), **result.counts}
+    result.counts = {"devices": len(devices), **changes, **result.counts}
     result.counts["deleted_files"] = len(housekeeping(out, cfg.housekeeping.keep_days, now))
 
     manifest_path = out / f"run-{now:%Y%m%dT%H%M%S}.json"

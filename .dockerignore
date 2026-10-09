@@ -6,3 +6,5 @@
 docs
 tests
 deploy
+.env
+**/.env

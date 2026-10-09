@@ -42,15 +42,16 @@ def run_publish(cfg: Config, now: datetime, config_path: Path) -> StepResult:
     out = cfg.paths.output
     date = f"{now:%Y%m%d}"
     written: list[Path] = []
+    links: list[tuple[str, Path]] = []  # moved only after every file is written
 
     if cfg.outputs.devices_json:
         link = out / "devices-latest.json"
-        atomic_symlink(devices_path.name, link)
+        links.append((devices_path.name, link))
         result.outputs["devices_latest"] = str(link)
     if cfg.outputs.legacy_csv:
         csv_path = out / f"discovery.csv.{date}"
         write_legacy_csv(csv_path, devices, cfg.outputs.legacy_csv_communities)
-        atomic_symlink(csv_path.name, out / "discovery-latest.csv")
+        links.append((csv_path.name, out / "discovery-latest.csv"))
         summary = out / "discovery-summary.csv"
         append_summary_csv(summary, doc.get("scan", {}))
         written += [csv_path, summary]
@@ -59,9 +60,11 @@ def run_publish(cfg: Config, now: datetime, config_path: Path) -> StepResult:
     if cfg.outputs.services_csv:
         services = out / f"services-{date}.csv"
         result.counts["services_csv"] = write_services_csv(services, devices)
-        atomic_symlink(services.name, out / "services-latest.csv")
+        links.append((services.name, out / "services-latest.csv"))
         written.append(services)
         result.outputs["services_csv"] = str(services)
+    for target, link in links:
+        atomic_symlink(target, link)
     for path in written:
         result.warnings.extend(apply_perms(path, cfg.housekeeping))
 

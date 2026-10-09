@@ -43,3 +43,12 @@ def test_warnings_are_prefixed(cfg, config_path):
     result = run_all(cfg, NOW, config_path, env=ENV, runner=fake_nmap)
     assert result.status == "warning"
     assert result.warnings[0].startswith("scan: no exclude list at")
+
+
+def test_exception_in_a_step_fails_the_run(cfg, config_path):
+    def crash(cmd, **kwargs):
+        raise RuntimeError("disk on fire")
+    result = run_all(cfg, NOW, config_path, env=ENV, runner=crash)
+    assert result.status == "failed"
+    assert result.error == "scan: RuntimeError: disk on fire"
+    assert load_step_results(cfg.state_dir)["scan"]["status"] == "failed"

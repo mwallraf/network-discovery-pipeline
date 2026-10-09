@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
 import subprocess
@@ -72,7 +73,9 @@ def run_scan(cfg: Config, now: datetime, env: Mapping[str, str] | None = None, r
         with os.fdopen(fd, "w") as fh:
             fh.write("\n".join(communities) + "\n")
         targets_file = Path(tmp) / "targets.txt"
-        targets_file.write_text("\n".join(str(p.network) for p in prefix_input.prefixes) + "\n")
+        # overlapping prefixes would make nmap scan the same addresses twice
+        targets = ipaddress.collapse_addresses(p.network for p in prefix_input.prefixes)
+        targets_file.write_text("\n".join(str(net) for net in targets) + "\n")
         cmd = build_nmap_command(cfg.scanner, targets_file, communities_file, base, exclude)
         log.info("running: %s", " ".join(cmd))
         try:
@@ -89,6 +92,9 @@ def run_scan(cfg: Config, now: datetime, env: Mapping[str, str] | None = None, r
         report = parse_scan(xml)
     except NmapXmlError as exc:
         result.error = str(exc)
+        return result
+    if report.summary.hosts_up == 0:
+        result.error = f"no hosts up in {xml}: keeping the previous scan-latest"
         return result
 
     for suffix in ("xml", "txt"):

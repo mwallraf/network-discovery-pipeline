@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import logging
 import os
@@ -80,11 +81,22 @@ def _run_step(args, step: str, fn: Callable[[Config, datetime], StepResult]) -> 
         cfg = load_config(Path(args.config))
     except ConfigError as exc:
         return emit(StepResult(step, error=str(exc)))
-    result = fn(cfg, started)
-    result.started = started.isoformat(timespec="seconds")
-    result.finished = now_local().isoformat(timespec="seconds")
-    save_step_result(cfg.state_dir, result)
-    return emit(result)
+    cfg.state_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = cfg.state_dir / "ndp.lock"
+    with open(lock_path, "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            # do not save state: it belongs to the step that holds the lock
+            return emit(StepResult(step, error=f"another ndp step is running (lock {lock_path})"))
+        try:
+            result = fn(cfg, started)
+        except Exception as exc:  # any crash still becomes a JSON result for n8n
+            result = StepResult(step, error=f"{type(exc).__name__}: {exc}")
+        result.started = started.isoformat(timespec="seconds")
+        result.finished = now_local().isoformat(timespec="seconds")
+        save_step_result(cfg.state_dir, result)
+        return emit(result)
 
 
 def emit(result: StepResult) -> int:

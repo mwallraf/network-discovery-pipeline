@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -68,3 +69,40 @@ def test_cli_parse_saves_state(config_path, capsys):
 def test_cli_bad_config_exit_1(tmp_path, capsys):
     assert main(["-c", str(tmp_path / "nope.yaml"), "parse"]) == 1
     assert json.loads(capsys.readouterr().out)["error"].startswith("cannot read config")
+
+
+def test_big_drop_in_device_count_is_a_warning(cfg, tmp_path):
+    out = cfg.paths.output
+    out.mkdir(parents=True)
+    previous = {"devices": [{"key": f"d{i}"} for i in range(10)]}
+    (out / "devices-20261008.json").write_text(json.dumps(previous))
+    os.symlink("devices-20261008.json", out / "devices-latest.json")
+    result = run_parse(cfg, NOW, FIXTURE)
+    assert result.status == "warning"
+    assert "device count dropped from 10 to 3" in result.warnings[-1]
+
+
+def test_unexpected_exception_still_prints_json_and_saves_state(config_path, capsys, monkeypatch):
+    import ndp.step_parse
+
+    def boom(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(ndp.step_parse, "write_text_atomic", boom)
+    assert main(["-c", str(config_path), "parse", "--xml", str(FIXTURE)]) == 1
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["status"] == "failed"
+    assert printed["error"].startswith("PermissionError:")
+    state = json.loads((config_path.parent / "out" / "state" / "last-parse.json").read_text())
+    assert state["status"] == "failed"
+
+
+def test_second_step_while_one_runs_is_refused(config_path, capsys):
+    import fcntl
+
+    state = config_path.parent / "out" / "state"
+    state.mkdir(parents=True)
+    with open(state / "ndp.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert main(["-c", str(config_path), "parse", "--xml", str(FIXTURE)]) == 1
+    assert "another ndp step is running" in json.loads(capsys.readouterr().out)["error"]

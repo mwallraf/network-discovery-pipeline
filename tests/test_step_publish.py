@@ -71,3 +71,21 @@ def test_cli_publish(config_path, capsys):
     capsys.readouterr()
     assert main(["-c", str(config_path), "publish"]) == 0
     assert json.loads(capsys.readouterr().out)["step"] == "publish"
+
+
+def test_failure_mid_publish_moves_no_latest_link(cfg, config_path, monkeypatch):
+    import ndp.step_publish
+
+    parse_first(cfg)
+
+    def boom(*args, **kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(ndp.step_publish, "write_services_csv", boom)
+    try:
+        run_publish(cfg, NOW, config_path)
+    except OSError:
+        pass
+    out = cfg.paths.output
+    assert not (out / "devices-latest.json").exists()
+    assert not (out / "discovery-latest.csv").exists()

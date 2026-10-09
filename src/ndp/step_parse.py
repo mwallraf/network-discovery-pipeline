@@ -15,6 +15,17 @@ from ndp.nmapxml import NmapXmlError, parse_scan
 from ndp.result import StepResult
 
 
+# warn when fewer than this fraction of the previous run's devices are found
+MAX_DROP = 0.5
+
+
+def _previous_device_count(path: Path) -> int:
+    try:
+        return len(json.loads(path.read_text()).get("devices", []))
+    except (OSError, ValueError, AttributeError):
+        return 0
+
+
 def run_parse(cfg: Config, now: datetime, xml_path: Path | None = None) -> StepResult:
     result = StepResult("parse")
     xml = Path(xml_path) if xml_path else cfg.scans_dir / "scan-latest.xml"
@@ -37,6 +48,13 @@ def run_parse(cfg: Config, now: datetime, xml_path: Path | None = None) -> StepR
     if not inventory.devices:
         result.error = f"no devices found in {xml}: not writing an empty inventory"
         return result
+
+    previous = _previous_device_count(cfg.paths.output / "devices-latest.json")
+    if previous and len(inventory.devices) < previous * MAX_DROP:
+        result.warnings.append(
+            f"device count dropped from {previous} to {len(inventory.devices)} "
+            f"(more than {int((1 - MAX_DROP) * 100)}%): check the scan before trusting this inventory"
+        )
 
     out = cfg.paths.output / f"devices-{now:%Y%m%d}.json"
     doc = {

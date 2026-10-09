@@ -30,7 +30,10 @@ def run_all(
     ]
     for name, fn in steps:
         started = now_local()
-        step_result = fn(started)
+        try:
+            step_result = fn(started)
+        except Exception as exc:
+            step_result = StepResult(name, error=f"{type(exc).__name__}: {exc}")
         step_result.started = started.isoformat(timespec="seconds")
         step_result.finished = now_local().isoformat(timespec="seconds")
         save_step_result(cfg.state_dir, step_result)

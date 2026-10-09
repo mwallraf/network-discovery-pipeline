@@ -126,3 +126,31 @@ def test_nmap_not_installed(cfg):
         raise FileNotFoundError(2, "No such file or directory")
     result = run_scan(cfg, NOW, env=ENV, runner=missing)
     assert result.error.startswith("cannot run nmap (nmap)")
+
+
+EMPTY_SCAN = """<?xml version="1.0"?>
+<nmaprun start="1" startstr="x"><runstats><finished time="2" timestr="y" elapsed="1.0"/>
+<hosts up="0" down="3" total="3"/></runstats></nmaprun>
+"""
+
+
+def test_empty_scan_fails_and_keeps_previous_latest(cfg, tmp_path):
+    cfg.scans_dir.mkdir(parents=True)
+    (cfg.scans_dir / "scan-20261008T050000.xml").write_text("old")
+    os.symlink("scan-20261008T050000.xml", cfg.scans_dir / "scan-latest.xml")
+    empty = tmp_path / "empty.xml"
+    empty.write_text(EMPTY_SCAN)
+    result = run_scan(cfg, NOW, env=ENV, runner=FakeNmap(xml=empty))
+    assert result.status == "failed"
+    assert "no hosts up" in result.error
+    assert os.readlink(cfg.scans_dir / "scan-latest.xml") == "scan-20261008T050000.xml"
+
+
+def test_overlapping_prefixes_are_scanned_once(cfg):
+    path = cfg.paths.inputs / "prefixes.json"
+    data = json.loads(path.read_text())
+    data["prefixes"].append({"prefix": "192.0.2.0/26", "role": "MGMT_LAN"})
+    path.write_text(json.dumps(data))
+    fake = FakeNmap()
+    run_scan(cfg, NOW, env=ENV, runner=fake)
+    assert fake.targets == "192.0.2.0/24\n198.51.100.0/24\n203.0.113.0/24\n"

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun scanner="nmap" args="nmap -n -Pn -sU -p 161 --script snmp-brute,snmp-ifalias-service" start="1791519960" startstr="Fri Oct  9 04:26:00 2026" version="7.99" xmloutputversion="1.05">
+<host><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.1" addrtype="ipv4"/>
+<ports><port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="0"/>
+<script id="snmp-brute" output="public - Valid credentials"><table><elem key="password">public</elem><elem key="state">Valid credentials</elem></table></script>
+<script id="snmp-ifalias-service" output="..."><table key="Loopback0"><elem key="ifIndex">1</elem><table key="addresses"><elem>192.0.2.1/32</elem></table></table><table key="Loopback10"><elem key="ifIndex">2</elem><table key="addresses"><elem>192.0.2.50/32</elem></table></table><table key="GigabitEthernet0/0/0/1"><elem key="ifIndex">3</elem><elem key="ifAlias">SVC100001 customer-a</elem><table key="services"><elem>SVC100001</elem></table><table key="addresses"><elem>198.51.100.1/30</elem></table></table><table key="GigabitEthernet0/0/0/2"><elem key="ifIndex">4</elem><table key="addresses"><elem>198.51.100.5/30</elem><elem>10.255.0.1/24</elem></table></table></script>
+</port></ports></host>
+<host><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.2" addrtype="ipv4"/>
+<ports><port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="0"/>
+<script id="snmp-brute" output="public - Valid credentials"><table><elem key="password">public</elem><elem key="state">Valid credentials</elem></table></script>
+<script id="snmp-ifalias-service" output="..."><table key="MgmtEth0/RP0/CPU0/0"><elem key="ifIndex">1</elem><table key="addresses"><elem>192.0.2.2/24</elem></table></table><table key="Bundle-Ether1"><elem key="ifIndex">2</elem><table key="addresses"><elem>198.51.100.9/30</elem></table></table><table key="Loopback20"><elem key="ifIndex">3</elem><table key="addresses"><elem>203.0.113.10/32</elem></table></table></script>
+</port></ports></host>
+<host><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.3" addrtype="ipv4"/>
+<ports><port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="0"/>
+<script id="snmp-brute" output="private - Valid credentials"><table><elem key="password">private</elem><elem key="state">Valid credentials</elem></table></script>
+<script id="snmp-ifalias-service" output="..."><table key="loopback 64500"><elem key="ifIndex">1</elem><table key="addresses"><elem>192.0.2.30/32</elem></table></table><table key="Loopback1"><elem key="ifIndex">2</elem><table key="addresses"><elem>192.0.2.3/32</elem></table></table><table key="TenGigE0/0/0/0"><elem key="ifIndex">3</elem><table key="addresses"><elem>198.51.100.13/30</elem></table></table></script>
+</port></ports></host>
+<host><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.4" addrtype="ipv4"/>
+<ports><port protocol="udp" portid="161"><state state="open|filtered" reason="no-response" reason_ttl="0"/></port></ports></host>
+<runstats><finished time="1791520060" timestr="Fri Oct  9 04:27:40 2026" summary="4 IP addresses (4 hosts up) scanned in 100.00 seconds" elapsed="100.00" exit="success"/><hosts up="4" down="0" total="4"/></runstats>
+</nmaprun>

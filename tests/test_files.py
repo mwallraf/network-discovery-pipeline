@@ -2,8 +2,10 @@ import os
 import stat
 from datetime import datetime, timedelta
 
+import pytest
+
 from ndp.config import Housekeeping
-from ndp.files import apply_perms, atomic_symlink, housekeeping, write_text_atomic
+from ndp.files import apply_perms, atomic_symlink, housekeeping, write_private_file, write_text_atomic
 
 NOW = datetime(2026, 10, 9, 5, 0).astimezone()
 
@@ -69,3 +71,21 @@ def test_housekeeping_keeps_target_of_latest_link(tmp_path):
     atomic_symlink(target.name, tmp_path / "discovery-latest.csv")
     assert housekeeping(tmp_path, keep_days=30, now=NOW) == []
     assert target.exists()
+
+
+def test_write_private_file_is_0600_and_never_overwrites(tmp_path):
+    path = tmp_path / "secret.txt"
+    write_private_file(path, "a\n")
+    assert path.read_text() == "a\n"
+    assert path.stat().st_mode & 0o777 == 0o600
+    with pytest.raises(FileExistsError):
+        write_private_file(path, "b\n")
+
+
+def test_housekeeping_deletes_old_exclude_files(tmp_path):
+    (tmp_path / "nmap").mkdir()
+    old = [tmp_path / "nmap" / "exclude-20260801T043000.xml", tmp_path / "infra-interfaces-20260801.json"]
+    for path in old:
+        path.write_text("x")
+        age(path, 60)
+    assert sorted(housekeeping(tmp_path, keep_days=30, now=NOW)) == sorted(old)

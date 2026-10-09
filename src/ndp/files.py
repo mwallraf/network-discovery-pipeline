@@ -15,8 +15,10 @@ from ndp.config import Housekeeping
 DATED_PATTERNS = (
     "nmap/scan-2*.xml",
     "nmap/scan-2*.txt",
+    "nmap/exclude-2*.xml",
     "discovery.csv.2*",
     "devices-2*.json",
+    "infra-interfaces-2*.json",
     "services-2*.csv",
     "run-2*.json",
 )
@@ -34,6 +36,13 @@ def write_text_atomic(path: Path, text: str) -> None:
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise
+
+
+def write_private_file(path: Path, text: str) -> None:
+    """Create a file only the owner can read (secrets); never overwrite."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(text)
 
 
 def atomic_symlink(target_name: str, link: Path) -> None:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ipaddress
 import logging
-import os
 import subprocess
 import tempfile
 from collections.abc import Mapping
@@ -12,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from ndp.config import Config, ConfigError, Scanner, communities_from_env
-from ndp.files import apply_perms, atomic_symlink
+from ndp.files import apply_perms, atomic_symlink, write_private_file
 from ndp.inputs import InputError, load_prefixes
 from ndp.nmapxml import NmapXmlError, parse_scan
 from ndp.result import StepResult
@@ -69,9 +68,7 @@ def run_scan(cfg: Config, now: datetime, env: Mapping[str, str] | None = None, r
     base = cfg.scans_dir / f"scan-{now:%Y%m%dT%H%M%S}"
     with tempfile.TemporaryDirectory(prefix="ndp-") as tmp:
         communities_file = Path(tmp) / "communities.txt"
-        fd = os.open(communities_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, "w") as fh:
-            fh.write("\n".join(communities) + "\n")
+        write_private_file(communities_file, "\n".join(communities) + "\n")
         targets_file = Path(tmp) / "targets.txt"
         # overlapping prefixes would make nmap scan the same addresses twice
         targets = ipaddress.collapse_addresses(p.network for p in prefix_input.prefixes)

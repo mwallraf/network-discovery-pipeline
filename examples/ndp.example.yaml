@@ -1,0 +1,38 @@
+# Example ndp configuration. Copy it to your private site config repository
+# and adapt it. Every value here is invented.
+
+paths:
+  output: /data/network-discovery         # all outputs
+  inputs: /data/network-discovery/inputs  # files generated before each run
+
+nautobot:
+  # Pass 1 (plan 2): devices whose interface IPs go into the exclude list.
+  device_roles: [PE, P]
+  # Pass 2: prefixes to discover. The order is the preference when a device
+  # has IPs in several roles: its management IP comes from the first role.
+  prefix_roles:
+    INFRA_LOOPBACK: {function: CORE, note: PE and P loopbacks}
+    CPE_LOOPBACK:   {function: CPE,  note: CPE loopbacks}
+    MGMT_LAN:       {function: DCN,  note: management LAN}
+    CPE_P2P:        {function: CPE,  note: "CPE-PE links, older CPEs have no loopback"}
+
+scanner:
+  nmap_path: nmap
+  snmp_timeout_ms: 4000
+  timing: 5                 # nmap -T5
+  tcp_ports: [22, 23, 179]
+  host_discovery_ports: [22, 23]
+  # SNMP community strings come from the SNMP_COMMUNITIES environment variable.
+
+outputs:
+  devices_json: true
+  legacy_csv: true
+  legacy_csv_communities: true   # put community strings in the legacy CSV
+  services_csv: true
+
+housekeeping:
+  keep_days: 30
+  owner: null       # user name or numeric id; numeric ids are safer in a container
+  group: null
+  file_mode: "0664" # quote modes, an unquoted 0664 is read as a number
+  dir_mode: "0775"

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 from ndp import __version__
+from ndp.config import ConfigError, load_config
 from ndp.result import StepResult
 
 DEFAULT_CONFIG = "/etc/ndp/ndp.yaml"
@@ -31,7 +34,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _add_commands(sub) -> None:
-    """Register one subcommand per step (added by later tasks)."""
+    """Register one subcommand per step."""
+    p = sub.add_parser("config", help="validate ndp.yaml and print it as JSON")
+    p.add_argument("--json", action="store_true", help="output JSON (the only format)")
+    p.set_defaults(handler=_cmd_config)
+
+
+def _cmd_config(args) -> int:
+    try:
+        cfg = load_config(Path(args.config))
+    except ConfigError as exc:
+        return emit(StepResult("config", error=str(exc)))
+    print(json.dumps(cfg.model_dump(mode="json"), indent=2))
+    return 0
 
 
 def emit(result: StepResult) -> int:

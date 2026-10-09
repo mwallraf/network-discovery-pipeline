@@ -16,6 +16,7 @@ from ndp.config import Config, ConfigError, load_config
 from ndp.result import StepResult, now_local
 from ndp.state import save_step_result
 from ndp.step_parse import run_parse
+from ndp.step_scan import run_scan
 
 DEFAULT_CONFIG = "/etc/ndp/ndp.yaml"
 
@@ -46,6 +47,9 @@ def _add_commands(sub) -> None:
     p = sub.add_parser("parse", help="turn the scan XML into devices-<date>.json")
     p.add_argument("--xml", type=Path, help="scan XML to parse (default: <output>/nmap/scan-latest.xml)")
     p.set_defaults(handler=lambda args: _run_step(args, "parse", lambda cfg, now: run_parse(cfg, now, args.xml)))
+
+    p = sub.add_parser("scan", help="run the full nmap discovery (pass 2)")
+    p.set_defaults(handler=lambda args: _run_step(args, "scan", run_scan))
 
 
 def _cmd_config(args) -> int:

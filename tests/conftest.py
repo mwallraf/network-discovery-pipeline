@@ -17,6 +17,8 @@ nautobot:
     INFRA_LOOPBACK: {{function: CORE}}
     CPE_P2P: {{function: CPE}}
     MGMT_LAN: {{function: DCN}}
+exclude:
+  mgmt_interfaces: [Loopback64500, Loopback0, Loopback1]
 """
 
 

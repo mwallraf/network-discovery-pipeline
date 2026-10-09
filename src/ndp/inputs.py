@@ -25,6 +25,20 @@ class PrefixInput:
     warnings: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class InfraRouter:
+    name: str
+    role: str
+    mgmt_ip: str
+
+
+@dataclass
+class InfraInput:
+    source: dict
+    routers: list[InfraRouter]
+    warnings: list[str] = field(default_factory=list)
+
+
 def _read_json(path: Path) -> dict:
     try:
         text = Path(path).read_text()
@@ -64,3 +78,37 @@ def load_prefixes(path: Path) -> PrefixInput:
         prefixes.append(PrefixEntry(network, role))
     source = data.get("source") if isinstance(data.get("source"), dict) else {}
     return PrefixInput(source=source, prefixes=prefixes, warnings=warnings)
+
+
+def load_infra_routers(path: Path) -> InfraInput:
+    data = _read_json(path)
+    entries = data.get("devices")
+    if not isinstance(entries, list):
+        raise InputError(f"{path}: 'devices' must be a list")
+    routers: list[InfraRouter] = []
+    warnings: list[str] = []
+    names: set[str] = set()
+    ips: set[str] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict) or not entry.get("name"):
+            raise InputError(f"{path}: devices[{index}] needs 'name'")
+        name = str(entry["name"])
+        if not entry.get("mgmt_ip"):
+            # a device without a primary IP in Nautobot must not block the others
+            warnings.append(f"skipped {name}: no mgmt_ip")
+            continue
+        try:
+            ip = ipaddress.ip_interface(str(entry["mgmt_ip"])).ip
+        except ValueError:
+            raise InputError(f"{path}: devices[{index}]: invalid mgmt_ip {entry['mgmt_ip']!r}") from None
+        if ip.version != 4:
+            warnings.append(f"skipped {name}: IPv6 mgmt_ip {ip}")
+            continue
+        if name in names or str(ip) in ips:
+            warnings.append(f"skipped duplicate router {name} ({ip})")
+            continue
+        names.add(name)
+        ips.add(str(ip))
+        routers.append(InfraRouter(name=name, role=str(entry.get("role") or ""), mgmt_ip=str(ip)))
+    source = data.get("source") if isinstance(data.get("source"), dict) else {}
+    return InfraInput(source=source, routers=routers, warnings=warnings)

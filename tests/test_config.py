@@ -90,3 +90,13 @@ def test_cli_config_prints_json(config_path, capsys):
 def test_cli_config_error_exit_1(tmp_path, capsys):
     assert main(["-c", str(tmp_path / "nope.yaml"), "config"]) == 1
     assert json.loads(capsys.readouterr().out)["status"] == "failed"
+
+
+def test_exclude_mgmt_interfaces(cfg):
+    assert cfg.exclude.mgmt_interfaces == ["Loopback64500", "Loopback0", "Loopback1"]
+
+
+def test_exclude_section_is_optional(tmp_path):
+    path = tmp_path / "ndp.yaml"
+    path.write_text("paths: {output: /o, inputs: /i}\nnautobot:\n  prefix_roles: {A: {}}\n")
+    assert load_config(path).exclude.mgmt_interfaces == []

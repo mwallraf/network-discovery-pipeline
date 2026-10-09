@@ -1,0 +1,14 @@
+{
+  "source": {
+    "system": "nautobot",
+    "url": "https://nautobot.example/",
+    "query": "devices with role in [PE]",
+    "fetched_at": "2026-10-09T04:26:00+02:00"
+  },
+  "devices": [
+    {"name": "pe-01", "role": "PE", "mgmt_ip": "192.0.2.1/32"},
+    {"name": "pe-02", "role": "PE", "mgmt_ip": "192.0.2.2"},
+    {"name": "pe-03", "role": "PE", "mgmt_ip": "192.0.2.3/32"},
+    {"name": "pe-04", "role": "PE", "mgmt_ip": "192.0.2.4"}
+  ]
+}

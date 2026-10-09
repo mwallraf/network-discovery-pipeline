@@ -1,9 +1,11 @@
 import ipaddress
 import json
+import re
+from pathlib import Path
 
 import pytest
 
-from ndp.inputs import InputError, load_prefixes
+from ndp.inputs import InputError, load_infra_routers, load_prefixes
 
 
 def write(tmp_path, data):
@@ -65,3 +67,58 @@ def test_invalid_input(tmp_path, data, message):
 def test_missing_file(tmp_path):
     with pytest.raises(InputError, match="cannot read"):
         load_prefixes(tmp_path / "nope.json")
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def write_infra(tmp_path, data):
+    path = tmp_path / "infra-routers.json"
+    path.write_text(json.dumps(data))
+    return path
+
+
+def test_load_infra_routers_fixture():
+    result = load_infra_routers(FIXTURES / "infra-routers.json")
+    assert [(r.name, r.role, r.mgmt_ip) for r in result.routers] == [
+        ("pe-01", "PE", "192.0.2.1"),
+        ("pe-02", "PE", "192.0.2.2"),
+        ("pe-03", "PE", "192.0.2.3"),
+        ("pe-04", "PE", "192.0.2.4"),
+    ]
+    assert result.source["system"] == "nautobot"
+    assert result.warnings == []
+
+
+def test_infra_router_without_mgmt_ip_is_skipped(tmp_path):
+    path = write_infra(tmp_path, {"devices": [{"name": "pe-01", "mgmt_ip": None}, {"name": "pe-02", "mgmt_ip": "192.0.2.2"}]})
+    result = load_infra_routers(path)
+    assert [r.name for r in result.routers] == ["pe-02"]
+    assert result.warnings == ["skipped pe-01: no mgmt_ip"]
+    assert result.routers[0].role == ""
+
+
+def test_infra_ipv6_and_duplicates_are_skipped(tmp_path):
+    path = write_infra(tmp_path, {"devices": [
+        {"name": "a", "mgmt_ip": "2001:db8::1"},
+        {"name": "b", "mgmt_ip": "192.0.2.1"},
+        {"name": "b", "mgmt_ip": "192.0.2.9"},
+        {"name": "c", "mgmt_ip": "192.0.2.1/32"},
+    ]})
+    result = load_infra_routers(path)
+    assert [r.name for r in result.routers] == ["b"]
+    assert result.warnings == [
+        "skipped a: IPv6 mgmt_ip 2001:db8::1",
+        "skipped duplicate router b (192.0.2.9)",
+        "skipped duplicate router c (192.0.2.1)",
+    ]
+
+
+@pytest.mark.parametrize("data, message", [
+    ({"devices": "x"}, "'devices' must be a list"),
+    ({"devices": [{"mgmt_ip": "192.0.2.1"}]}, "devices[0] needs 'name'"),
+    ({"devices": [{"name": "a", "mgmt_ip": "nope"}]}, "devices[0]: invalid mgmt_ip 'nope'"),
+])
+def test_invalid_infra_input(tmp_path, data, message):
+    with pytest.raises(InputError, match=re.escape(message)):
+        load_infra_routers(write_infra(tmp_path, data))

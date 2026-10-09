@@ -79,12 +79,18 @@ class Housekeeping(_Model):
         return value
 
 
+class Exclude(_Model):
+    # priority order; names are compared case-insensitively, spaces ignored
+    mgmt_interfaces: list[str] = Field(default_factory=list)
+
+
 class Config(_Model):
     paths: Paths
     nautobot: Nautobot
     scanner: Scanner = Field(default_factory=Scanner)
     outputs: Outputs = Field(default_factory=Outputs)
     housekeeping: Housekeeping = Field(default_factory=Housekeeping)
+    exclude: Exclude = Field(default_factory=Exclude)
 
     @property
     def scans_dir(self) -> Path:

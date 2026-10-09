@@ -64,7 +64,7 @@ script server: bin/ndp → docker run --rm ghcr.io/mwallraf/network-discovery-pi
   ▼
 ndp steps
   config  → prints the effective config as JSON (n8n reads the role lists)
-  exclude → pass 1: SNMP on infrastructure routers → exclude.txt, infra-interfaces.json
+  exclude → pass 1: SNMP on infrastructure routers → exclude.txt, infra-interfaces-<date>.json
   scan    → pass 2: full scan of all discovery prefixes minus exclude.txt → scan-<ts>.xml
   parse   → devices-<date>.json
   publish → CSV/JSON/services outputs, run-<ts>.json, README.md, housekeeping
@@ -170,21 +170,44 @@ The exclude list removes those router-side addresses from pass 2.
 1. Read `inputs/infra-routers.json`.
 2. Run nmap with `snmp-brute,snmp-ifalias-service` (UDP 161 only) against the
    routers' mgmt IPs.
-3. For each router: all interface IPv4 addresses → candidates; remove the
-   router's mgmt IP. Write `exclude.txt` (one IP per line, sorted) and
-   `infra-interfaces.json` (router, interface, ifAlias, services, addresses).
-4. A router that does not answer SNMP keeps its addresses from the previous
-   `exclude.txt` (stored per router in `infra-interfaces.json`), and gets a
+3. Choose one mgmt IP per router that answered, from its SNMP interfaces.
+   "Mgmt prefixes" are the prefixes of the `prefix_roles` in
+   `inputs/prefixes.json`; the role order in `ndp.yaml` is the priority.
+   1. Walk `exclude.mgmt_interfaces` in order (names compared
+      case-insensitively, spaces ignored). The first of those interfaces
+      that has an address inside a mgmt prefix gives the mgmt IP.
+   2. Otherwise, walk the prefix roles in priority order; the first role
+      that contains any of the router's addresses gives the mgmt IP (the
+      numerically lowest address if several fall in that role).
+   3. If the chosen IP differs from the Nautobot mgmt IP, the chosen IP
+      wins and the step warns (router, Nautobot IP, chosen IP), so Nautobot
+      can be corrected.
+   4. If no address falls in any mgmt prefix, nothing is chosen: the
+      Nautobot mgmt IP stays scannable and the step warns.
+4. Every other address of the router goes into the exclude list.
+5. A router that does not answer SNMP keeps its entry (and so its excluded
+   addresses) from the previous `infra-interfaces-latest.json`, and gets a
    warning. A router never seen before that does not answer gets a warning
    only.
+6. Write `inputs/exclude.txt` (sorted, unique, one IP per line, atomic) and
+   `infra-interfaces-<date>.json` + `infra-interfaces-latest.json` in the
+   output folder: per router name, role, Nautobot IP, chosen mgmt IP, the
+   reason (`interface:<name>` or `prefix_role:<role>`), `last_seen`,
+   interfaces (ifAlias, services, addresses) and the excluded IPs. The raw
+   pass-1 XML is `nmap/exclude-<ts>.xml`.
+7. Safety: if no router answers, the step fails and the previous
+   `exclude.txt` stays. If the number of excluded IPs drops by more than
+   50% compared with the previous run, the step warns.
+
+Config:
+
+```yaml
+exclude:
+  mgmt_interfaces: [Loopback<ASN>, Loopback0, Loopback1]  # priority order
+```
 
 Tested: on IOS-XR, interfaces in a VRF and their addresses are returned (the VRF
 name is not).
-
-**Open (decided later, before implementation of this step):** exact rules for
-which addresses stay scannable. There is a naming rule for management
-interfaces (for example `Loopback0`, `Loopback1`, `Loopback<ASN>`) that may
-need to be taken into account in addition to "mgmt IP from Nautobot".
 
 ## 8. Step: `scan` (pass 2)
 
@@ -247,6 +270,7 @@ Device record (JSON):
 
 | File | Content | Notes |
 |---|---|---|
+| `infra-interfaces-<date>.json`, `infra-interfaces-latest.json` | Pass 1: per infrastructure router its interfaces, chosen mgmt IP and excluded IPs, section 7 | |
 | `devices-<date>.json`, `devices-latest.json` | All device records | |
 | `discovery.csv.<date>`, `discovery-latest.csv` | One row per device | Columns identical to legacy, see below |
 | `discovery-summary.csv` | One row appended per run | Legacy columns: `id,started,started_str,endtime,endtime_str,elapsed,hosts_total,hosts_up,hosts_down,filename` |
@@ -375,7 +399,5 @@ JSON into the input contract of section 6.
 
 ## 17. Open questions
 
-- Exclude-list rules including the management-interface naming rule (section
-  7), to be decided before that step is implemented.
 - Notification channel (email, Teams, ...), chosen when building the n8n
   workflow.

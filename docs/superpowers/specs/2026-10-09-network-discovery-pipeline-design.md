@@ -312,6 +312,31 @@ failure.
   with a chosen subnet, so Docker's default range does not overlap internal
   networks (the legacy setup used a custom network for this).
 
+- Why the image is built on the scanner image (decided 2026-10-09): `ndp scan`
+  needs nmap and the custom NSE scripts in its own container. Building on the
+  scanner image gives one image, a pinned scanner version and no Docker
+  socket. Rejected: `ndp` starting the scanner container (needs the Docker
+  socket, root-equivalent), separate containers glued by the wrapper (more
+  steps, secrets passed between containers). Possible later: own slim image
+  with Debian nmap and the NSE scripts copied in (multi-stage), if image size
+  or the Kali base becomes a problem.
+
+### n8n deployment
+
+`deploy/n8n/docker-compose.yml` in this repo (generic), with site values in a
+`.env` from the private config repo:
+
+- `n8n` container (official image, version pinned via `.env`), SQLite database
+  in a named volume (`/home/node/.n8n`). Not published on a host port.
+- `caddy` container in front of it, the only one with published ports (80,
+  443), terminating HTTPS: either Caddy's internal CA (`tls internal`) or a
+  certificate and key provided by the site.
+- Required settings in `.env`: n8n hostname, n8n version, timezone,
+  `N8N_ENCRYPTION_KEY` (generated once and kept; without it stored
+  credentials cannot be decrypted), TLS mode.
+- n8n's own user management protects the UI. It stores the Nautobot token and
+  the SSH key to the script server as n8n credentials.
+
 ## 14. n8n workflow
 
 ```

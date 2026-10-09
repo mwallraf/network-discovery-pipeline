@@ -21,6 +21,9 @@ services:
       TZ: ${TZ}
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      # n8n Assistant (AI) is off by default: it needs an LLM key and a code sandbox.
+      # Set N8N_DISABLED_MODULES= (empty) in .env to turn it back on.
+      N8N_DISABLED_MODULES: ${N8N_DISABLED_MODULES-instance-ai}
     volumes:
       - n8n_data:/home/node/.n8n
 

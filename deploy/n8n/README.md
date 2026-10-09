@@ -21,6 +21,15 @@ Store `N8N_ENCRYPTION_KEY` somewhere safe (password manager). n8n encrypts the
 credentials it stores (Nautobot token, SSH key) with it; a new key makes them
 unreadable.
 
+## n8n Assistant (AI) and its sandbox
+
+n8n Assistant is switched off (`N8N_DISABLED_MODULES=instance-ai`), so setup
+does not ask for a sandbox. The workflows in this project do not need it.
+Assistant needs an LLM API key and a code sandbox: a privileged
+Docker-in-Docker setup meant for testing, or Daytona for production. See
+[Set up n8n Assistant](https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant)
+before enabling it.
+
 ## Certificates
 
 - `CADDY_TLS=internal`: Caddy creates its own certificate authority. Browsers

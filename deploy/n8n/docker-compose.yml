@@ -1,0 +1,54 @@
+# n8n behind Caddy (HTTPS), SQLite database in a named volume.
+#
+#   cp .env.example .env    # then fill in the values
+#   docker compose up -d
+#
+# Only Caddy publishes ports; n8n is reachable through Caddy only.
+# See README.md for the first login, certificates and backups.
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:?set N8N_VERSION in .env}
+    restart: unless-stopped
+    environment:
+      N8N_HOST: ${N8N_HOST:?set N8N_HOST in .env}
+      N8N_PROTOCOL: https
+      N8N_PORT: "5678"
+      WEBHOOK_URL: https://${N8N_HOST}/
+      N8N_PROXY_HOPS: "1"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?set N8N_ENCRYPTION_KEY in .env}
+      GENERIC_TIMEZONE: ${TZ:?set TZ in .env}
+      TZ: ${TZ}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  caddy:
+    image: caddy:${CADDY_VERSION:-2.11.7}
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    environment:
+      N8N_HOST: ${N8N_HOST}
+      CADDY_TLS: ${CADDY_TLS:-internal}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+networks:
+  default:
+    # A fixed subnet, so Docker's default ranges cannot overlap internal networks.
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:?set DOCKER_SUBNET in .env}
+
+volumes:
+  n8n_data:
+  caddy_data:
+  caddy_config:

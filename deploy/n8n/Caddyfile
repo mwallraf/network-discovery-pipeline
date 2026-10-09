@@ -1,0 +1,6 @@
+# CADDY_TLS is either "internal" (Caddy's own CA) or
+# "/certs/<cert>.pem /certs/<key>.pem" (certificate provided by the site).
+{$N8N_HOST} {
+	tls {$CADDY_TLS}
+	reverse_proxy n8n:5678
+}

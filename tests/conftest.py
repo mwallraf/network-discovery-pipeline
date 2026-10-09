@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ nautobot:
 def config_path(tmp_path: Path) -> Path:
     inputs = tmp_path / "inputs"
     inputs.mkdir()
+    shutil.copy(FIXTURES / "prefixes.json", inputs / "prefixes.json")
     path = tmp_path / "ndp.yaml"
     path.write_text(CONFIG_TEMPLATE.format(output=tmp_path / "out", inputs=inputs))
     return path

@@ -44,3 +44,9 @@ def test_render_readme():
     assert "| prefixes | nautobot | https://nautobot.example/ | q | t | 3 |" in text
     assert "| `nmap/scan-1.xml` | ndp scan |" in text
     assert "- scan: no exclude list" in text
+
+
+def test_exclude_outputs_are_described():
+    from ndp.manifest import DESCRIPTIONS
+    for name in ("exclude_list", "infra_interfaces", "infra_interfaces_latest", "exclude_xml"):
+        assert DESCRIPTIONS[name]

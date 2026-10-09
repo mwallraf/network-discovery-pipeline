@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -89,3 +90,12 @@ def test_failure_mid_publish_moves_no_latest_link(cfg, config_path, monkeypatch)
     out = cfg.paths.output
     assert not (out / "devices-latest.json").exists()
     assert not (out / "discovery-latest.csv").exists()
+
+
+def test_manifest_lists_infra_routers_source(cfg, config_path):
+    shutil.copy(Path(__file__).parent / "fixtures" / "infra-routers.json", cfg.paths.inputs / "infra-routers.json")
+    parse_first(cfg)
+    result = run_publish(cfg, NOW, config_path)
+    manifest = json.loads(Path(result.outputs["manifest"]).read_text())
+    assert manifest["sources"]["infra_routers"]["items"] == 4
+    assert manifest["sources"]["infra_routers"]["system"] == "nautobot"

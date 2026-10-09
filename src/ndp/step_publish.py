@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ndp.config import Config
 from ndp.files import apply_perms, atomic_symlink, housekeeping, write_text_atomic
-from ndp.inputs import InputError, load_prefixes
+from ndp.inputs import InputError, load_infra_routers, load_prefixes
 from ndp.manifest import build_manifest, render_readme
 from ndp.result import StepResult, now_local
 from ndp.state import load_step_results
@@ -24,11 +24,18 @@ def _devices_file(cfg: Config) -> Path | None:
 
 
 def _sources(cfg: Config) -> dict[str, dict]:
+    sources: dict[str, dict] = {}
+    try:
+        routers = load_infra_routers(cfg.paths.inputs / "infra-routers.json")
+        sources["infra_routers"] = {**routers.source, "items": len(routers.routers)}
+    except InputError:
+        pass
     try:
         prefixes = load_prefixes(cfg.paths.inputs / "prefixes.json")
+        sources["prefixes"] = {**prefixes.source, "items": len(prefixes.prefixes)}
     except InputError:
-        return {}
-    return {"prefixes": {**prefixes.source, "items": len(prefixes.prefixes)}}
+        pass
+    return sources
 
 
 def run_publish(cfg: Config, now: datetime, config_path: Path) -> StepResult:

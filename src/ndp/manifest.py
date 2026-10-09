@@ -12,6 +12,10 @@ STEP_ORDER = ("exclude", "scan", "parse", "publish")
 REPO_URL = "https://github.com/mwallraf/network-discovery-pipeline"
 
 DESCRIPTIONS = {
+    "exclude_list": "IPs skipped by the full discovery: infrastructure router addresses other than their mgmt IP",
+    "infra_interfaces": "Pass 1: infrastructure routers, their interfaces, chosen mgmt IP and excluded IPs (JSON)",
+    "infra_interfaces_latest": "Link to the newest infrastructure interfaces JSON",
+    "exclude_xml": "Raw nmap XML report of pass 1 (SNMP on infrastructure routers)",
     "scan_xml": "Raw nmap XML report of the full discovery",
     "scan_grep": "nmap grepable output of the full discovery",
     "devices": "All devices with SNMP details, interfaces and service IDs (JSON)",

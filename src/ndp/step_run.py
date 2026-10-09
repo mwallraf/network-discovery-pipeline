@@ -1,4 +1,4 @@
-"""ndp run: scan -> parse -> publish, for use without n8n (cron, by hand)."""
+"""ndp run: exclude -> scan -> parse -> publish, for use without n8n (cron, by hand)."""
 
 from __future__ import annotations
 
@@ -10,9 +10,13 @@ from pathlib import Path
 from ndp.config import Config
 from ndp.result import StepResult, now_local
 from ndp.state import save_step_result
+from ndp.step_exclude import run_exclude
 from ndp.step_parse import run_parse
 from ndp.step_publish import run_publish
 from ndp.step_scan import run_scan
+
+# a failed pass 1 keeps the previous exclude.txt, so the scan can still run
+OPTIONAL_STEPS = {"exclude"}
 
 
 def run_all(
@@ -24,6 +28,7 @@ def run_all(
 ) -> StepResult:
     result = StepResult("run")
     steps = [
+        ("exclude", lambda t: run_exclude(cfg, t, env=env, runner=runner)),
         ("scan", lambda t: run_scan(cfg, t, env=env, runner=runner)),
         ("parse", lambda t: run_parse(cfg, t)),
         ("publish", lambda t: run_publish(cfg, t, config_path)),
@@ -41,6 +46,9 @@ def run_all(
         result.outputs.update({f"{name}.{key}": value for key, value in step_result.outputs.items()})
         result.counts.update({f"{name}.{key}": value for key, value in step_result.counts.items()})
         if step_result.error:
+            if name in OPTIONAL_STEPS:
+                result.warnings.append(f"{name}: {step_result.error}; scanning with the previous exclude list")
+                continue
             result.error = f"{name}: {step_result.error}"
             break
     return result

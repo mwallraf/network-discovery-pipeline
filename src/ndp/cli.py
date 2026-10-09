@@ -7,11 +7,15 @@ import json
 import logging
 import os
 import sys
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
 from ndp import __version__
-from ndp.config import ConfigError, load_config
-from ndp.result import StepResult
+from ndp.config import Config, ConfigError, load_config
+from ndp.result import StepResult, now_local
+from ndp.state import save_step_result
+from ndp.step_parse import run_parse
 
 DEFAULT_CONFIG = "/etc/ndp/ndp.yaml"
 
@@ -39,6 +43,10 @@ def _add_commands(sub) -> None:
     p.add_argument("--json", action="store_true", help="output JSON (the only format)")
     p.set_defaults(handler=_cmd_config)
 
+    p = sub.add_parser("parse", help="turn the scan XML into devices-<date>.json")
+    p.add_argument("--xml", type=Path, help="scan XML to parse (default: <output>/nmap/scan-latest.xml)")
+    p.set_defaults(handler=lambda args: _run_step(args, "parse", lambda cfg, now: run_parse(cfg, now, args.xml)))
+
 
 def _cmd_config(args) -> int:
     try:
@@ -47,6 +55,20 @@ def _cmd_config(args) -> int:
         return emit(StepResult("config", error=str(exc)))
     print(json.dumps(cfg.model_dump(mode="json"), indent=2))
     return 0
+
+
+def _run_step(args, step: str, fn: Callable[[Config, datetime], StepResult]) -> int:
+    """Load config, run one step, save and print its result."""
+    started = now_local()
+    try:
+        cfg = load_config(Path(args.config))
+    except ConfigError as exc:
+        return emit(StepResult(step, error=str(exc)))
+    result = fn(cfg, started)
+    result.started = started.isoformat(timespec="seconds")
+    result.finished = now_local().isoformat(timespec="seconds")
+    save_step_result(cfg.state_dir, result)
+    return emit(result)
 
 
 def emit(result: StepResult) -> int:

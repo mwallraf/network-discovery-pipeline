@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun scanner="nmap" args="nmap -n -sU -sS" start="1791522000" startstr="Fri Oct  9 05:00:00 2026" version="7.99" xmloutputversion="1.05">
+<host starttime="1791522001" endtime="1791522100"><status state="up" reason="syn-ack" reason_ttl="0"/>
+<address addr="192.0.2.1" addrtype="ipv4"/>
+<ports>
+<port protocol="tcp" portid="22"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="23"><state state="closed" reason="reset" reason_ttl="0"/><service name="telnet" method="table" conf="3"/></port>
+<port protocol="tcp" portid="179"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="bgp" method="table" conf="3"/></port>
+<port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="0"/><service name="snmp" method="table" conf="3"/>
+<script id="snmp-brute" output="public - Valid credentials"><table><elem key="password">public</elem><elem key="state">Valid credentials</elem></table></script>
+<script id="snmp-info" output="enterprise: ciscoSystems"><elem key="enterprise">ciscoSystems</elem></script>
+<script id="snmp-sysdetails" output="..."><elem key="sysDescr">Cisco IOS XR Software, Version 7.5.2[Default]&#xa;Copyright (c) 2022 by Cisco Systems, Inc.</elem><elem key="sysObjectId">1.3.6.1.4.1.9.1.2658</elem><elem key="sysUpTime">10d00h00m00.00s (86400000 timeticks)</elem><elem key="sysName">pe-01.example.net</elem><elem key="physSerial">SERPE01</elem><elem key="physModel">ASR-9901</elem></script>
+<script id="snmp-ifalias-service" output="..."><table key="Loopback0"><elem key="ifIndex">1</elem><table key="addresses"><elem>192.0.2.1/32</elem></table></table><table key="GigabitEthernet0/0/0/2.100"><elem key="ifIndex">12</elem><elem key="ifAlias">SVC123456 customer-a, site 1</elem><table key="services"><elem>SVC123456</elem></table><table key="addresses"><elem>198.51.100.1/30</elem></table></table></script>
+</port>
+</ports>
+</host>
+<host starttime="1791522001" endtime="1791522100"><status state="up" reason="udp-response" reason_ttl="0"/>
+<address addr="198.51.100.1" addrtype="ipv4"/>
+<ports>
+<port protocol="tcp" portid="22"><state state="filtered" reason="no-response" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="0"/><service name="snmp" method="table" conf="3"/>
+<script id="snmp-brute" output="public - Valid credentials"><table><elem key="password">public</elem><elem key="state">Valid credentials</elem></table></script>
+<script id="snmp-info" output="enterprise: ciscoSystems"><elem key="enterprise">ciscoSystems</elem></script>
+<script id="snmp-sysdetails" output="..."><elem key="sysDescr">Cisco IOS XR Software, Version 7.5.2[Default]&#xa;Copyright (c) 2022 by Cisco Systems, Inc.</elem><elem key="sysObjectId">1.3.6.1.4.1.9.1.2658</elem><elem key="sysUpTime">10d00h00m01.00s (86400100 timeticks)</elem><elem key="sysName">pe-01</elem><elem key="physSerial">SERPE01</elem><elem key="physModel">ASR-9901</elem></script>
+</port>
+</ports>
+</host>
+<host starttime="1791522001" endtime="1791522100"><status state="up" reason="syn-ack" reason_ttl="0"/>
+<address addr="198.51.100.2" addrtype="ipv4"/>
+<ports>
+<port protocol="tcp" portid="22"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="23"><state state="closed" reason="reset" reason_ttl="0"/><service name="telnet" method="table" conf="3"/></port>
+<port protocol="tcp" portid="179"><state state="closed" reason="reset" reason_ttl="0"/><service name="bgp" method="table" conf="3"/></port>
+<port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="0"/><service name="snmp" method="table" conf="3"/>
+<script id="snmp-brute" output="private - Valid credentials"><table><elem key="password">private</elem><elem key="state">Valid credentials</elem></table></script>
+<script id="snmp-info" output="enterprise: oneAccess"><elem key="enterprise">oneAccess</elem></script>
+<script id="snmp-sysdetails" output="..."><elem key="sysDescr">ONEOS16-MONO_FT-V5.2R2E7_HA8</elem><elem key="sysObjectId">1.3.6.1.4.1.13191.1.1.140</elem><elem key="sysUpTime">57d21h06m33.41s (500079341 timeticks)</elem><elem key="sysName">cpe-01</elem><elem key="physSerial">T1703006230033175</elem><elem key="physModel">LBB_140</elem></script>
+<script id="snmp-ifalias-service" output="Gi0/0 = SVC654321 (IP: 198.51.100.2, Subnet Mask: 255.255.255.252)"/>
+</port>
+</ports>
+</host>
+<host starttime="1791522001" endtime="1791522100"><status state="up" reason="syn-ack" reason_ttl="0"/>
+<address addr="203.0.113.5" addrtype="ipv4"/>
+<ports>
+<port protocol="tcp" portid="22"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="udp" portid="161"><state state="open|filtered" reason="no-response" reason_ttl="0"/><service name="snmp" method="table" conf="3"/></port>
+</ports>
+</host>
+<host starttime="1791522001" endtime="1791522100"><status state="down" reason="no-response" reason_ttl="0"/>
+<address addr="203.0.113.9" addrtype="ipv4"/>
+</host>
+<runstats><finished time="1791523800" timestr="Fri Oct  9 05:30:00 2026" summary="5 IP addresses (4 hosts up) scanned in 1800.12 seconds" elapsed="1800.12" exit="success"/><hosts up="4" down="1" total="5"/></runstats>
+</nmaprun>

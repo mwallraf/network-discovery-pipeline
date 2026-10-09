@@ -14,6 +14,7 @@ def test_example_config_loads():
     assert list(cfg.nautobot.prefix_roles) == ["INFRA_LOOPBACK", "CPE_LOOPBACK", "MGMT_LAN", "CPE_P2P"]
     assert cfg.nautobot.prefix_roles["CPE_P2P"].function == "CPE"
     assert cfg.scanner.timing == 5
+    assert cfg.exclude.mgmt_interfaces == ["Loopback64500", "Loopback0", "Loopback1"]
 
 
 def test_defaults(cfg, tmp_path):

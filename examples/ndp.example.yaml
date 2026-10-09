@@ -6,7 +6,8 @@ paths:
   inputs: /data/network-discovery/inputs  # files generated before each run
 
 nautobot:
-  # Pass 1 (plan 2): devices whose interface IPs go into the exclude list.
+  # Pass 1 (ndp exclude): devices whose interface IPs go into the exclude list.
+  # n8n fetches these from Nautobot into <inputs>/infra-routers.json.
   device_roles: [PE, P]
   # Pass 2: prefixes to discover. The order is the preference when a device
   # has IPs in several roles: its management IP comes from the first role.
@@ -15,6 +16,13 @@ nautobot:
     CPE_LOOPBACK:   {function: CPE,  note: CPE loopbacks}
     MGMT_LAN:       {function: DCN,  note: management LAN}
     CPE_P2P:        {function: CPE,  note: "CPE-PE links, older CPEs have no loopback"}
+
+exclude:
+  # Pass 1 keeps ONE address per router scannable. First choice: the first of
+  # these interfaces (in this order) with an address inside a discovery prefix.
+  # Otherwise: the router address in the highest prefix role above.
+  # Names are compared case-insensitively, spaces ignored.
+  mgmt_interfaces: [Loopback64500, Loopback0, Loopback1]
 
 scanner:
   nmap_path: nmap

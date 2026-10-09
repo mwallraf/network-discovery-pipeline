@@ -14,7 +14,8 @@ holds only the tool and generic examples.
 | Source | Fetched by | Step | Output | Location |
 |---|---|---|---|---|
 | Prefixes with a discovery role (Nautobot) | n8n, before the run | `ndp scan` | `scan-<ts>.xml`, `scan-latest.xml` | `<output>/nmap/` |
-| Exclude list (`exclude.txt`, later: `ndp exclude`) | n8n / `ndp exclude` | `ndp scan` | (input only) | `<inputs>/` |
+| Infrastructure routers with role in `device_roles` (Nautobot) | n8n, before the run | `ndp exclude` | `exclude.txt`; `infra-interfaces-<date>.json`, `infra-interfaces-latest.json`; `exclude-<ts>.xml` | `<inputs>/`; `<output>/`; `<output>/nmap/` |
+| Exclude list (`exclude.txt`) | `ndp exclude` (or by hand) | `ndp scan` | (input only) | `<inputs>/` |
 | Scan XML + prefixes | | `ndp parse` | `devices-<date>.json` | `<output>/` |
 | Devices JSON | | `ndp publish` | `devices-latest.json`, `discovery.csv.<date>`, `discovery-latest.csv`, `discovery-summary.csv`, `services-latest.csv`, `run-<ts>.json`, `README.md` | `<output>/` |
 
@@ -33,7 +34,22 @@ itself.
 }
 ```
 
-`<inputs>/exclude.txt` (optional): one IP per line, not scanned.
+`<inputs>/infra-routers.json`, normally written by n8n from Nautobot (devices
+with a role in `nautobot.device_roles`; `mgmt_ip` may include `/32`):
+
+```json
+{
+  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "...", "fetched_at": "..."},
+  "devices": [{"name": "pe-01", "role": "PE", "mgmt_ip": "192.0.2.1/32"}]
+}
+```
+
+`<inputs>/exclude.txt`: one IP per line, not scanned by `ndp scan`. Written by
+`ndp exclude`: it polls every router on its mgmt IP over SNMP, keeps one
+address per router scannable (see `exclude.mgmt_interfaces` in the example
+config) and lists all its other addresses. A router that does not answer keeps
+its addresses from the previous run. Each router's choice and reason are in
+`infra-interfaces-latest.json`.
 
 SNMP communities: environment variable `SNMP_COMMUNITIES` (comma-separated),
 for example from a `.env` file with mode 0600. Never pass them as arguments.
@@ -53,9 +69,11 @@ docker run --rm --env-file .env -e TZ=UTC \
   ghcr.io/mwallraf/network-discovery-pipeline:latest run
 ```
 
-Steps: `ndp config`, `ndp scan`, `ndp parse [--xml FILE]`, `ndp publish`,
-`ndp run`. Each prints a JSON summary on stdout; exit code `0` = ok, `2` = ok
+Steps: `ndp config`, `ndp exclude`, `ndp scan`, `ndp parse [--xml FILE]`,
+`ndp publish`, `ndp run`. Each prints a JSON summary on stdout; exit code `0` = ok, `2` = ok
 with warnings, `1` = failed. A failed step never replaces a `*-latest` file.
+In `ndp run`, a failed `ndp exclude` is a warning: the scan uses the previous
+`exclude.txt`.
 File names use the container's local time: pass `TZ` to get your time zone.
 
 Compare with a legacy CSV: `python -m ndp.compare old.csv new.csv`.

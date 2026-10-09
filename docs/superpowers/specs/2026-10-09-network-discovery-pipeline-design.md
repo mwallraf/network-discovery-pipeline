@@ -187,8 +187,11 @@ The exclude list removes those router-side addresses from pass 2.
 4. Every other address of the router goes into the exclude list.
 5. A router that does not answer SNMP keeps its entry (and so its excluded
    addresses) from the previous `infra-interfaces-latest.json`, and gets a
-   warning. A router never seen before that does not answer gets a warning
-   only.
+   warning, for at most `exclude.stale_max_days` (default 30) since it last
+   answered; after that its old addresses are no longer excluded (they may
+   have been reused). A router that returns interfaces without addresses
+   counts as not answering. A router never seen before that does not answer
+   gets a warning only.
 6. Write `inputs/exclude.txt` (sorted, unique, one IP per line, atomic) and
    `infra-interfaces-<date>.json` + `infra-interfaces-latest.json` in the
    output folder: per router name, role, Nautobot IP, chosen mgmt IP, the
@@ -204,6 +207,7 @@ Config:
 ```yaml
 exclude:
   mgmt_interfaces: [Loopback<ASN>, Loopback0, Loopback1]  # priority order
+  stale_max_days: 30
 ```
 
 Tested: on IOS-XR, interfaces in a VRF and their addresses are returned (the VRF

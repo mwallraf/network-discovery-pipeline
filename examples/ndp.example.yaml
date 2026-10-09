@@ -23,6 +23,9 @@ exclude:
   # Otherwise: the router address in the highest prefix role above.
   # Names are compared case-insensitively, spaces ignored.
   mgmt_interfaces: [Loopback64500, Loopback0, Loopback1]
+  # A router that does not answer keeps its excluded addresses from earlier
+  # runs, but only for this many days: after that they may have been reused.
+  stale_max_days: 30
 
 scanner:
   nmap_path: nmap

@@ -82,6 +82,8 @@ class Housekeeping(_Model):
 class Exclude(_Model):
     # priority order; names are compared case-insensitively, spaces ignored
     mgmt_interfaces: list[str] = Field(default_factory=list)
+    # a router that has not answered for longer keeps no excluded addresses
+    stale_max_days: int = Field(default=30, ge=1)
 
 
 class Config(_Model):

@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from ndp.config import Config, ConfigError, Scanner, communities_from_env
-from ndp.exclude import choose_mgmt, excluded_ips, merge_exclude
+from ndp.exclude import choose_mgmt, excluded_ips, merge_exclude, router_ips
 from ndp.files import apply_perms, atomic_symlink, write_private_file, write_text_atomic
 from ndp.inputs import InputError, load_infra_routers, load_prefixes
 from ndp.nmapxml import NmapXmlError, parse_scan
@@ -46,6 +46,16 @@ def _read_previous(path: Path) -> dict:
     except (OSError, ValueError):
         return {}
     return doc if isinstance(doc, dict) else {}
+
+
+def _age_days(last_seen, now: datetime) -> float | None:
+    try:
+        seen = datetime.fromisoformat(str(last_seen))
+    except ValueError:
+        return None
+    if seen.tzinfo is None:
+        seen = seen.astimezone()
+    return (now - seen).total_seconds() / 86400
 
 
 def _ipv4_list(values) -> list[str]:
@@ -96,8 +106,9 @@ def run_exclude(cfg: Config, now: datetime, env: Mapping[str, str] | None = None
         result.error = str(exc)
         return result
 
-    # no structured interfaces (no answer, or old plain-text script output) = no answer
-    interfaces_by_ip = {host.ip: host.interfaces for host in report.hosts if host.interfaces}
+    # no interface addresses (no answer, old plain-text script output, or the
+    # address walk failed) = no answer, so the previous entry is kept
+    interfaces_by_ip = {host.ip: host.interfaces for host in report.hosts if router_ips(host.interfaces)}
     latest = cfg.paths.output / "infra-interfaces-latest.json"
     previous = _read_previous(latest)
     previous_routers = {
@@ -148,12 +159,22 @@ def run_exclude(cfg: Config, now: datetime, env: Mapping[str, str] | None = None
                 "stale": True,
                 "excluded": _ipv4_list(old.get("excluded")),
             }
+            age = _age_days(old.get("last_seen"), now)
+            if age is None or age > cfg.exclude.stale_max_days:
+                # its old addresses may have been reused by other devices by now
+                entry["excluded"] = []
+                result.warnings.append(
+                    f"{router.name} ({router.mgmt_ip}): no SNMP answer for more than "
+                    f"{cfg.exclude.stale_max_days} days (last seen {old.get('last_seen') or 'unknown'}); "
+                    "its old addresses are no longer excluded"
+                )
+            else:
+                result.warnings.append(
+                    f"{router.name} ({router.mgmt_ip}): no SNMP answer; kept {len(entry['excluded'])} "
+                    f"excluded IPs from {old.get('last_seen') or 'an earlier run'}"
+                )
             entries.append(entry)
             protected[entry.get("mgmt_ip") or router.mgmt_ip] = router.name
-            result.warnings.append(
-                f"{router.name} ({router.mgmt_ip}): no SNMP answer; kept {len(entry['excluded'])} "
-                f"excluded IPs from {old.get('last_seen') or 'an earlier run'}"
-            )
         else:
             unseen += 1
             protected[router.mgmt_ip] = router.name

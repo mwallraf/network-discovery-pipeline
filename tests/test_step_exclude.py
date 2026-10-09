@@ -203,3 +203,48 @@ def test_no_routers(cfg):
     (cfg.paths.inputs / "infra-routers.json").write_text(json.dumps({"devices": []}))
     result = run_exclude(cfg, NOW, env=ENV, runner=FakeNmap())
     assert result.error == "no IPv4 routers in infra-routers.json"
+
+
+def test_router_with_interfaces_but_no_addresses_counts_as_no_answer(cfg, routers, tmp_path):
+    write_previous(cfg, {"routers": [{
+        "name": "pe-02", "role": "PE", "nautobot_ip": "192.0.2.2", "mgmt_ip": "192.0.2.2",
+        "mgmt_reason": "prefix_role:INFRA_LOOPBACK", "last_seen": NOW.isoformat(timespec="seconds"),
+        "stale": False, "interfaces": [], "excluded": ["198.51.100.9"],
+    }], "exclude": ["198.51.100.9"]})
+    xml = tmp_path / "noaddr.xml"
+    text = XML.read_text()
+    for addr in ("192.0.2.2/24", "198.51.100.9/30", "203.0.113.10/32"):
+        text = text.replace(f"<table key=\"addresses\"><elem>{addr}</elem></table>", "")
+    xml.write_text(text)
+    result = run_exclude(cfg, NOW, env=ENV, runner=FakeNmap(xml=xml))
+    assert result.counts["stale"] == 1
+    assert "198.51.100.9" in exclude_lines(cfg)
+    assert any(w.startswith("pe-02 (192.0.2.2): no SNMP answer; kept 1 excluded IPs") for w in result.warnings)
+
+
+@pytest.mark.parametrize("last_seen", ["2026-09-01T04:30:00+02:00", "garbage", None])
+def test_old_stale_entry_no_longer_excludes(cfg, routers, last_seen):
+    write_previous(cfg, {"routers": [{
+        "name": "pe-04", "role": "PE", "nautobot_ip": "192.0.2.4", "mgmt_ip": "192.0.2.4",
+        "mgmt_reason": "interface:Loopback0", "last_seen": last_seen,
+        "stale": True, "interfaces": [], "excluded": ["198.51.100.17"],
+    }], "exclude": ["198.51.100.17"]})
+    result = run_exclude(cfg, NOW, env=ENV, runner=FakeNmap())
+    assert "198.51.100.17" not in exclude_lines(cfg)
+    assert result.counts["stale"] == 1
+    assert any(
+        w.startswith("pe-04 (192.0.2.4): no SNMP answer for more than 30 days") for w in result.warnings
+    ), result.warnings
+    entry = next(r for r in latest_doc(cfg)["routers"] if r["name"] == "pe-04")
+    assert entry["excluded"] == [] and entry["last_seen"] == last_seen
+
+
+def test_stale_max_days_is_configurable(cfg, routers):
+    cfg.exclude.stale_max_days = 60
+    write_previous(cfg, {"routers": [{
+        "name": "pe-04", "role": "PE", "nautobot_ip": "192.0.2.4", "mgmt_ip": "192.0.2.4",
+        "mgmt_reason": "interface:Loopback0", "last_seen": "2026-09-01T04:30:00+02:00",
+        "stale": True, "interfaces": [], "excluded": ["198.51.100.17"],
+    }], "exclude": ["198.51.100.17"]})
+    run_exclude(cfg, NOW, env=ENV, runner=FakeNmap())
+    assert "198.51.100.17" in exclude_lines(cfg)

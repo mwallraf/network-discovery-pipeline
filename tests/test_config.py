@@ -101,3 +101,7 @@ def test_exclude_section_is_optional(tmp_path):
     path = tmp_path / "ndp.yaml"
     path.write_text("paths: {output: /o, inputs: /i}\nnautobot:\n  prefix_roles: {A: {}}\n")
     assert load_config(path).exclude.mgmt_interfaces == []
+
+
+def test_exclude_stale_max_days_default(cfg):
+    assert cfg.exclude.stale_max_days == 30

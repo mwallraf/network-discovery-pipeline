@@ -17,6 +17,7 @@ from ndp.result import StepResult, now_local
 from ndp.state import save_step_result
 from ndp.step_parse import run_parse
 from ndp.step_publish import run_publish
+from ndp.step_run import run_all
 from ndp.step_scan import run_scan
 
 DEFAULT_CONFIG = "/etc/ndp/ndp.yaml"
@@ -55,6 +56,11 @@ def _add_commands(sub) -> None:
     p = sub.add_parser("publish", help="write CSV/JSON outputs, the run manifest and README")
     p.set_defaults(
         handler=lambda args: _run_step(args, "publish", lambda cfg, now: run_publish(cfg, now, Path(args.config)))
+    )
+
+    p = sub.add_parser("run", help="run scan, parse and publish in order")
+    p.set_defaults(
+        handler=lambda args: _run_step(args, "run", lambda cfg, now: run_all(cfg, now, Path(args.config)))
     )
 
 

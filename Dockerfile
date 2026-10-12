@@ -4,7 +4,7 @@ FROM ${SCANNER_IMAGE}
 ARG SCANNER_IMAGE
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 python3-venv \
+ && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 COPY . /src

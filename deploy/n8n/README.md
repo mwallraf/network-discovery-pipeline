@@ -30,6 +30,13 @@ Docker-in-Docker setup meant for testing, or Daytona for production. See
 [Set up n8n Assistant](https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant)
 before enabling it.
 
+## Proxy
+
+`HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from `.env` are passed to n8n, which
+sends its outbound HTTP requests (Nautobot GraphQL, Teams webhook) through
+them. Leave them empty for direct access. When a proxy is set, an internal
+Nautobot usually belongs in `NO_PROXY`.
+
 ## Certificates
 
 - `CADDY_TLS=internal`: Caddy creates its own certificate authority. Browsers

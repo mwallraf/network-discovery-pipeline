@@ -15,6 +15,8 @@ def test_example_config_loads():
     assert cfg.nautobot.prefix_roles["CPE_P2P"].function == "CPE"
     assert cfg.scanner.timing == 5
     assert cfg.exclude.mgmt_interfaces == ["Loopback64500", "Loopback0", "Loopback1"]
+    assert cfg.nautobot.url == "https://nautobot.example/"
+    assert cfg.nautobot.verify_tls is True and cfg.nautobot.proxy is None
 
 
 def test_defaults(cfg, tmp_path):

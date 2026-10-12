@@ -13,8 +13,8 @@ holds only the tool and generic examples.
 
 | Source | Fetched by | Step | Output | Location |
 |---|---|---|---|---|
-| Prefixes with a discovery role (Nautobot) | n8n, before the run | `ndp scan` | `scan-<ts>.xml`, `scan-latest.xml` | `<output>/nmap/` |
-| Infrastructure routers with role in `device_roles` (Nautobot) | n8n, before the run | `ndp exclude` | `exclude.txt`; `infra-interfaces-<date>.json`, `infra-interfaces-latest.json`; `exclude-<ts>.xml` | `<inputs>/`; `<output>/`; `<output>/nmap/` |
+| Prefixes with a discovery role (Nautobot) | n8n or `ndp fetch`, before the run | `ndp scan` | `scan-<ts>.xml`, `scan-latest.xml` | `<output>/nmap/` |
+| Infrastructure routers with role in `device_roles` (Nautobot) | n8n or `ndp fetch`, before the run | `ndp exclude` | `exclude.txt`; `infra-interfaces-<date>.json`, `infra-interfaces-latest.json`; `exclude-<ts>.xml` | `<inputs>/`; `<output>/`; `<output>/nmap/` |
 | Exclude list (`exclude.txt`) | `ndp exclude` (or by hand) | `ndp scan` | (input only) | `<inputs>/` |
 | Scan XML + prefixes | | `ndp parse` | `devices-<date>.json` | `<output>/` |
 | Devices JSON | | `ndp publish` | `devices-latest.json`, `discovery.csv.<date>`, `discovery-latest.csv`, `discovery-summary.csv`, `services-latest.csv`, `run-<ts>.json`, `README.md` | `<output>/` |
@@ -25,21 +25,21 @@ itself.
 
 ## Inputs
 
-`<inputs>/prefixes.json`, normally written by n8n from Nautobot:
+`<inputs>/prefixes.json`, written by `ndp fetch` or by n8n from Nautobot:
 
 ```json
 {
-  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "...", "fetched_at": "..."},
+  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "...", "fetched_at": "...", "fetched_by": "ndp fetch"},
   "prefixes": [{"prefix": "192.0.2.0/24", "role": "INFRA_LOOPBACK"}]
 }
 ```
 
-`<inputs>/infra-routers.json`, normally written by n8n from Nautobot (devices
+`<inputs>/infra-routers.json`, written by `ndp fetch` or by n8n from Nautobot (devices
 with a role in `nautobot.device_roles`; `mgmt_ip` may include `/32`):
 
 ```json
 {
-  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "...", "fetched_at": "..."},
+  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "...", "fetched_at": "...", "fetched_by": "ndp fetch"},
   "devices": [{"name": "pe-01", "role": "PE", "mgmt_ip": "192.0.2.1/32"}]
 }
 ```
@@ -51,8 +51,11 @@ config) and lists all its other addresses. A router that does not answer keeps
 its addresses from the previous run. Each router's choice and reason are in
 `infra-interfaces-latest.json`.
 
-SNMP communities: environment variable `SNMP_COMMUNITIES` (comma-separated),
-for example from a `.env` file with mode 0600. Never pass them as arguments.
+`source.fetched_by` says who wrote the file: `ndp fetch` or `n8n`.
+
+Secrets come from the environment, for example a `.env` file with mode 0600,
+never from arguments: `SNMP_COMMUNITIES` (comma-separated) and, only for
+`ndp fetch`, `NAUTOBOT_TOKEN` (a read-only Nautobot API token).
 
 ## Configuration
 
@@ -69,14 +72,24 @@ docker run --rm --env-file .env -e TZ=UTC \
   ghcr.io/mwallraf/network-discovery-pipeline:latest run
 ```
 
-Steps: `ndp config`, `ndp exclude`, `ndp scan`, `ndp parse [--xml FILE]`,
-`ndp publish`, `ndp run`. Each prints a JSON summary on stdout; exit code `0` = ok, `2` = ok
+Steps: `ndp config`, `ndp fetch`, `ndp exclude`, `ndp scan`, `ndp parse [--xml FILE]`,
+`ndp publish`, `ndp run [--fetch]`. Each prints a JSON summary on stdout; exit code `0` = ok, `2` = ok
 with warnings, `1` = failed. A failed step never replaces a `*-latest` file.
 In `ndp run`, a failed `ndp exclude` is a warning: the scan uses the previous
 `exclude.txt`.
 File names use the container's local time: pass `TZ` to get your time zone.
 
 Compare with a legacy CSV: `python -m ndp.compare old.csv new.csv`.
+
+Without n8n: `ndp run --fetch` fetches the inputs from Nautobot first
+(`nautobot.url` in `ndp.yaml`, token in `NAUTOBOT_TOKEN`). A failed fetch is a
+warning: the run uses the previous input files. When you run steps one by one,
+do not chain them with `&&`: exit code 2 (warnings) is not a failure.
+
+Locally signed Nautobot certificate: `nautobot.verify_tls: false` (each fetch
+then reports a warning). Proxy: `HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY` in `.env`
+(the container gets them through `--env-file`), or `nautobot.proxy` in
+`ndp.yaml` for a proxy used only for Nautobot.
 
 n8n setup: see [`deploy/n8n/`](deploy/n8n/README.md).
 

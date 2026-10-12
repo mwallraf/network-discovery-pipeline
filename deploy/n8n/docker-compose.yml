@@ -24,6 +24,11 @@ services:
       # n8n Assistant (AI) is off by default: it needs an LLM key and a code sandbox.
       # Set N8N_DISABLED_MODULES= (empty) in .env to turn it back on.
       N8N_DISABLED_MODULES: ${N8N_DISABLED_MODULES-instance-ai}
+      # Outbound HTTP proxy (Nautobot, Teams webhook; SMTP does not use it). Empty = direct.
+      # List internal hosts that must be reached directly in NO_PROXY.
+      HTTP_PROXY: ${HTTP_PROXY-}
+      HTTPS_PROXY: ${HTTPS_PROXY-}
+      NO_PROXY: ${NO_PROXY-}
     volumes:
       - n8n_data:/home/node/.n8n
 

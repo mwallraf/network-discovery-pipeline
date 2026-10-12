@@ -6,8 +6,14 @@ paths:
   inputs: /data/network-discovery/inputs  # files generated before each run
 
 nautobot:
+  # Used by 'ndp fetch' (and 'ndp run --fetch'). n8n has its own copy of the
+  # URL in its Settings node. The token is NOT here: NAUTOBOT_TOKEN in .env.
+  url: https://nautobot.example/
+  timeout_s: 60
+  # verify_tls: false   # locally signed certificate: accept it (every fetch then warns)
+  # proxy: http://proxy.example:3128   # default: HTTPS_PROXY/HTTP_PROXY/NO_PROXY from .env
   # Pass 1 (ndp exclude): devices whose interface IPs go into the exclude list.
-  # n8n fetches these from Nautobot into <inputs>/infra-routers.json.
+  # 'ndp fetch' or n8n writes these from Nautobot into <inputs>/infra-routers.json.
   device_roles: [PE, P]
   # Pass 2: prefixes to discover. The order is the preference when a device
   # has IPs in several roles: its management IP comes from the first role.

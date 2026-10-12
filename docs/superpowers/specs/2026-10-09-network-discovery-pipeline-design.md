@@ -64,11 +64,12 @@ script server: bin/ndp → docker run --rm ghcr.io/mwallraf/network-discovery-pi
   ▼
 ndp steps
   config  → prints the effective config as JSON (n8n reads the role lists)
+  fetch   → Nautobot → inputs/infra-routers.json, inputs/prefixes.json (n8n can do this instead)
   exclude → pass 1: SNMP on infrastructure routers → exclude.txt, infra-interfaces-<date>.json
   scan    → pass 2: full scan of all discovery prefixes minus exclude.txt → scan-<ts>.xml
   parse   → devices-<date>.json
   publish → CSV/JSON/services outputs, run-<ts>.json, README.md, housekeeping
-  run     → all of the above, for use without n8n
+  run     → [fetch,] exclude, scan, parse, publish, for use without n8n
 ```
 
 Division of responsibility: **n8n decides when steps run and moves data;
@@ -91,6 +92,11 @@ paths:
   inputs: /data/network-discovery/inputs # generated inputs
 
 nautobot:
+  # for 'ndp fetch'; the token is NAUTOBOT_TOKEN in the environment
+  url: https://nautobot.example/
+  timeout_s: 60
+  verify_tls: true             # false = accept a locally signed certificate (warns)
+  proxy: null                  # null = HTTPS_PROXY/HTTP_PROXY/NO_PROXY from the environment
   # pass 1: devices whose interface IPs go into the exclude list
   device_roles: [PE, P, AGGREGATION]
   # pass 2: prefixes to discover; order = preference when picking a mgmt IP
@@ -125,20 +131,22 @@ housekeeping:
 config error stops every step with exit code 1 and a clear message naming the
 key.
 
-Secrets: `SNMP_COMMUNITIES` (comma-separated) from the environment, normally
+Secrets: `SNMP_COMMUNITIES` (comma-separated) and `NAUTOBOT_TOKEN` (only for
+`ndp fetch`) from the environment, normally
 a `.env` file with mode 0600 on the server. Never a command-line argument
 (visible in the process list) and never written to logs or the run manifest.
 
-## 6. Input files (contract between n8n and ndp)
+## 6. Input files (contract between the Nautobot fetch and ndp)
 
-n8n converts Nautobot responses into these files, so `ndp` does not depend on
-the Nautobot API shape. Each file carries its own provenance.
+`ndp fetch` or n8n converts Nautobot responses into these files, so the other
+steps do not depend on the Nautobot API shape. Each file carries its own
+provenance; `fetched_by` is `ndp fetch` or `n8n`.
 
 `inputs/infra-routers.json`
 
 ```json
 {
-  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "devices role in [PE,P]", "fetched_at": "2026-10-09T05:00:12Z"},
+  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "devices role in [PE,P]", "fetched_at": "2026-10-09T05:00:12Z", "fetched_by": "ndp fetch"},
   "devices": [
     {"name": "pe-01", "role": "PE", "mgmt_ip": "192.0.2.1"}
   ]
@@ -149,7 +157,7 @@ the Nautobot API shape. Each file carries its own provenance.
 
 ```json
 {
-  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "prefixes role in [INFRA_LOOPBACK,...]", "fetched_at": "2026-10-09T05:00:14Z"},
+  "source": {"system": "nautobot", "url": "https://nautobot.example/", "query": "prefixes role in [INFRA_LOOPBACK,...]", "fetched_at": "2026-10-09T05:00:14Z", "fetched_by": "ndp fetch"},
   "prefixes": [
     {"prefix": "192.0.2.0/24", "role": "INFRA_LOOPBACK"}
   ]
@@ -320,7 +328,8 @@ paths) and logs on stderr.
 | 1 | Failure (bad config/input, nmap failed, no output) | stop, notify |
 
 A failed step never replaces a `*-latest` file. `run` stops at the first
-failure.
+failure, except that a failed `fetch` or `exclude` is a warning: the previous
+files are used.
 
 ## 13. Deployment
 

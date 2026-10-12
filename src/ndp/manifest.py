@@ -12,6 +12,8 @@ STEP_ORDER = ("exclude", "scan", "parse", "publish")
 REPO_URL = "https://github.com/mwallraf/network-discovery-pipeline"
 
 DESCRIPTIONS = {
+    "infra_routers": "Input: infrastructure routers from Nautobot (written by ndp fetch or n8n)",
+    "prefixes": "Input: discovery prefixes from Nautobot (written by ndp fetch or n8n)",
     "exclude_list": "IPs skipped by the full discovery: infrastructure router addresses other than their mgmt IP",
     "infra_interfaces": "Pass 1: infrastructure routers, their interfaces, chosen mgmt IP and excluded IPs (JSON)",
     "infra_interfaces_latest": "Link to the newest infrastructure interfaces JSON",

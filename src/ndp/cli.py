@@ -17,6 +17,7 @@ from ndp.config import Config, ConfigError, load_config
 from ndp.result import StepResult, now_local
 from ndp.state import save_step_result
 from ndp.step_exclude import run_exclude
+from ndp.step_fetch import run_fetch
 from ndp.step_parse import run_parse
 from ndp.step_publish import run_publish
 from ndp.step_run import run_all
@@ -47,6 +48,9 @@ def _add_commands(sub) -> None:
     p = sub.add_parser("config", help="validate ndp.yaml and print it as JSON")
     p.add_argument("--json", action="store_true", help="output JSON (the only format)")
     p.set_defaults(handler=_cmd_config)
+
+    p = sub.add_parser("fetch", help="fetch infra routers and discovery prefixes from Nautobot into inputs/")
+    p.set_defaults(handler=lambda args: _run_step(args, "fetch", run_fetch))
 
     p = sub.add_parser("exclude", help="poll infrastructure routers and write exclude.txt (pass 1)")
     p.set_defaults(handler=lambda args: _run_step(args, "exclude", run_exclude))

@@ -22,3 +22,9 @@ def test_exclude_without_inputs_fails_as_json(config_path, capsys):
     assert main(["-c", str(config_path), "exclude"]) == 1
     out = json.loads(capsys.readouterr().out)
     assert out["step"] == "exclude" and "infra-routers.json" in out["error"]
+
+
+def test_fetch_without_url_fails_as_json(config_path, capsys):
+    assert main(["-c", str(config_path), "fetch"]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["step"] == "fetch" and "nautobot.url" in out["error"]

@@ -38,6 +38,29 @@ def _sources(cfg: Config) -> dict[str, dict]:
     return sources
 
 
+def _when(value) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _drop_stale_fetch(results: dict[str, dict], sources: dict[str, dict]) -> None:
+    """Keep the fetch step only if it is not older than the input files in use.
+
+    n8n never runs 'ndp fetch', so an old state/last-fetch.json from a manual run
+    must not show up as a step of a later n8n-driven run.
+    """
+    fetch = results.get("fetch")
+    if fetch is None:
+        return
+    started = _when(fetch.get("started"))
+    fetched = [_when(src.get("fetched_at")) for src in sources.values()]
+    fetched = [when for when in fetched if when is not None and when.tzinfo is not None]
+    if started is None or started.tzinfo is None or (fetched and started < max(fetched)):
+        del results["fetch"]
+
+
 def _device_keys(path: Path) -> set[str] | None:
     try:
         return {str(device["key"]) for device in json.loads(path.read_text()).get("devices", [])}
@@ -103,7 +126,9 @@ def run_publish(cfg: Config, now: datetime, config_path: Path) -> StepResult:
     result.started = now.isoformat(timespec="seconds")
     result.finished = now_local().isoformat(timespec="seconds")
     results = {**load_step_results(cfg.state_dir), "publish": result.to_dict()}
-    manifest = build_manifest(now, config_path, results, _sources(cfg))
+    sources = _sources(cfg)
+    _drop_stale_fetch(results, sources)
+    manifest = build_manifest(now, config_path, results, sources)
     write_text_atomic(manifest_path, json.dumps(manifest, indent=2) + "\n")
     write_text_atomic(readme_path, render_readme(manifest, out))
     for path in (manifest_path, readme_path):

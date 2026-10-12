@@ -131,3 +131,19 @@ def test_fetch_applies_permissions(ncfg):
     run_fetch(ncfg, NOW, env=ENV, post=fake_nautobot())
     for name in ("infra-routers.json", "prefixes.json"):
         assert os.stat(ncfg.paths.inputs / name).st_mode & 0o777 == 0o664
+
+
+@pytest.mark.parametrize("devices, prefixes, message", [
+    ({"data": {"devices": [{"name": "pe-01", "role": None, "primary_ip4": None}]}}, PREFIXES["data"],
+     "no usable devices (IPv4 mgmt_ip) for roles PE"),
+    (DEVICES["data"], {"prefixes": [{"prefix": "2001:db8::/32", "role": {"name": "MGMT_LAN"}}]},
+     "no usable prefixes (IPv4) for roles INFRA_LOOPBACK, CPE_P2P, MGMT_LAN"),
+])
+def test_nothing_usable_keeps_old_files(ncfg, devices, prefixes, message):
+    old = (ncfg.paths.inputs / "prefixes.json").read_text()
+    post = fake_nautobot(devices={"data": devices} if "data" not in devices else devices,
+                         prefixes={"data": prefixes} if "data" not in prefixes else prefixes)
+    result = run_fetch(ncfg, NOW, env=ENV, post=post)
+    assert result.status == "failed" and message in result.error
+    assert (ncfg.paths.inputs / "prefixes.json").read_text() == old
+    assert not (ncfg.paths.inputs / "infra-routers.json").exists()

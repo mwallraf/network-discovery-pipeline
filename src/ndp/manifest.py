@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ndp import __version__
 
-STEP_ORDER = ("exclude", "scan", "parse", "publish")
+STEP_ORDER = ("fetch", "exclude", "scan", "parse", "publish")
 REPO_URL = "https://github.com/mwallraf/network-discovery-pipeline"
 
 DESCRIPTIONS = {
@@ -42,6 +42,9 @@ def build_manifest(now: datetime, config_path: Path, results: dict[str, dict], s
         for name, path in result.get("outputs", {}).items():
             outputs.append({"name": name, "path": path, "step": step, "rows": result.get("counts", {}).get(name)})
         warnings.extend(f"{step}: {warning}" for warning in result.get("warnings", []))
+        if result.get("error"):
+            # only optional steps (fetch, exclude) can fail in a run that reaches publish
+            warnings.append(f"{step}: {result['error']}")
     return {
         "run_at": now.isoformat(timespec="seconds"),
         "versions": {

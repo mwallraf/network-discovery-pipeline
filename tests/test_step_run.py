@@ -105,7 +105,7 @@ def test_run_with_fetch(config_path):
     assert result.counts["fetch.infra_routers"] == 2
     assert set(load_step_results(cfg.state_dir)) == {"fetch", "exclude", "scan", "parse", "publish"}
     manifest = json.loads(Path(result.outputs["publish.manifest"]).read_text())
-    assert list(manifest["steps"]) == ["exclude", "scan", "parse", "publish"]
+    assert list(manifest["steps"]) == ["fetch", "exclude", "scan", "parse", "publish"]
     assert manifest["sources"]["prefixes"]["fetched_by"] == "ndp fetch"
 
 
@@ -135,3 +135,33 @@ def test_run_without_fetch_does_not_call_nautobot(cfg, config_path):
     result = run_all(cfg, NOW, config_path, env=ENV, runner=fake_nmap, post=boom)
     assert "fetch" not in load_step_results(cfg.state_dir)
     assert result.status == "ok", (result.error, result.warnings)
+
+
+def test_failed_fetch_is_in_the_run_readme(cfg, config_path):
+    two_routers(cfg)
+
+    def down(url, body, headers):
+        raise NautobotError(f"cannot reach Nautobot at {url}: timed out")
+
+    cfg = with_url(config_path)
+    result = run_all(cfg, NOW, config_path, env={**ENV, "NAUTOBOT_TOKEN": "x"}, runner=fake_nmap, fetch=True, post=down)
+    manifest = json.loads(Path(result.outputs["publish.manifest"]).read_text())
+    assert list(manifest["steps"]) == ["fetch", "exclude", "scan", "parse", "publish"]
+    assert any(w.startswith("fetch: cannot reach Nautobot") for w in manifest["warnings"])
+
+
+def test_stale_fetch_is_not_in_a_later_run(config_path):
+    cfg = with_url(config_path)
+    env = {**ENV, "NAUTOBOT_TOKEN": "x"}
+    run_all(cfg, NOW, config_path, env=env, runner=fake_nmap, fetch=True, post=nautobot_post)
+    # later, n8n writes newer inputs and runs the steps without ndp fetch
+    # (steps are stamped with the real clock, so "later" must be after now)
+    for name in ("infra-routers.json", "prefixes.json"):
+        path = cfg.paths.inputs / name
+        doc = json.loads(path.read_text())
+        doc["source"] = {"system": "nautobot", "fetched_at": "2099-01-01T01:00:00.000Z", "fetched_by": "n8n"}
+        path.write_text(json.dumps(doc))
+    later = datetime(2026, 10, 10, 1, 5).astimezone()
+    result = run_all(cfg, later, config_path, env=env, runner=fake_nmap)
+    manifest = json.loads(Path(result.outputs["publish.manifest"]).read_text())
+    assert list(manifest["steps"]) == ["exclude", "scan", "parse", "publish"]

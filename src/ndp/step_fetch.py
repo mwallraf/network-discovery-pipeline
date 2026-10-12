@@ -89,7 +89,14 @@ def run_fetch(cfg: Config, now: datetime, env: Mapping[str, str] | None = None, 
             except InputError as exc:
                 result.error = f"Nautobot data is not valid: {exc}"
                 return result
-            result.counts[key] = len(loaded.routers if key == "infra_routers" else loaded.prefixes)
+            usable = len(loaded.routers if key == "infra_routers" else loaded.prefixes)
+            if usable == 0:
+                # e.g. no primary IPs or only IPv6: keep the working files of the previous fetch
+                what = "devices (IPv4 mgmt_ip)" if key == "infra_routers" else "prefixes (IPv4)"
+                roles = device_roles if key == "infra_routers" else prefix_roles
+                result.error = f"Nautobot returned no usable {what} for roles {', '.join(roles)}"
+                return result
+            result.counts[key] = usable
             result.warnings.extend(f"{key}: {warning}" for warning in loaded.warnings)
     for key, text in files.items():
         target = cfg.paths.inputs / names[key]

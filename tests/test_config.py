@@ -105,3 +105,31 @@ def test_exclude_section_is_optional(tmp_path):
 
 def test_exclude_stale_max_days_default(cfg):
     assert cfg.exclude.stale_max_days == 30
+
+
+def test_nautobot_access_defaults(cfg):
+    assert cfg.nautobot.url is None
+    assert cfg.nautobot.timeout_s == 60
+    assert cfg.nautobot.verify_tls is True
+    assert cfg.nautobot.proxy is None
+
+
+@pytest.mark.parametrize("key", ["url", "proxy"])
+def test_nautobot_urls_must_be_http(tmp_path, key):
+    path = tmp_path / "bad.yaml"
+    path.write_text(f"paths: {{output: /x, inputs: /y}}\nnautobot: {{{key}: host.example, prefix_roles: {{A: {{}}}}}}\n")
+    with pytest.raises(ConfigError, match=f"nautobot.{key}: Value error, must start with http"):
+        load_config(path)
+
+
+def test_nautobot_access_keys(tmp_path):
+    path = tmp_path / "ok.yaml"
+    path.write_text(
+        "paths: {output: /x, inputs: /y}\n"
+        "nautobot: {url: 'https://nautobot.example/', timeout_s: 10, verify_tls: false,"
+        " proxy: 'http://proxy.example:3128', prefix_roles: {A: {}}}\n"
+    )
+    nb = load_config(path).nautobot
+    assert (nb.url, nb.timeout_s, nb.verify_tls, nb.proxy) == (
+        "https://nautobot.example/", 10, False, "http://proxy.example:3128",
+    )

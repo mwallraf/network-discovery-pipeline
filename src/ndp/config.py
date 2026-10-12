@@ -35,6 +35,21 @@ class Nautobot(_Model):
     device_roles: list[str] = Field(default_factory=list)
     # dict order is the management IP preference
     prefix_roles: dict[str, PrefixRole] = Field(min_length=1)
+    # base URL for 'ndp fetch' (n8n has its own copy in its Settings node)
+    url: str | None = None
+    timeout_s: int = Field(default=60, ge=1)
+    # false = accept any certificate (locally signed); every fetch then warns
+    verify_tls: bool = True
+    # proxy for Nautobot only; null = HTTPS_PROXY/HTTP_PROXY/NO_PROXY from the environment.
+    # A proxy that needs a password goes in .env (HTTPS_PROXY), not here.
+    proxy: str | None = None
+
+    @field_validator("url", "proxy")
+    @classmethod
+    def _http_url(cls, value: str | None) -> str | None:
+        if value is not None and not value.startswith(("http://", "https://")):
+            raise ValueError("must start with http:// or https://")
+        return value
 
     @field_validator("prefix_roles", mode="before")
     @classmethod

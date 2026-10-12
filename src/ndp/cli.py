@@ -67,9 +67,12 @@ def _add_commands(sub) -> None:
         handler=lambda args: _run_step(args, "publish", lambda cfg, now: run_publish(cfg, now, Path(args.config)))
     )
 
-    p = sub.add_parser("run", help="run exclude, scan, parse and publish in order")
+    p = sub.add_parser("run", help="run [fetch,] exclude, scan, parse and publish in order")
+    p.add_argument("--fetch", action="store_true", help="first fetch the inputs from Nautobot (ndp fetch)")
     p.set_defaults(
-        handler=lambda args: _run_step(args, "run", lambda cfg, now: run_all(cfg, now, Path(args.config)))
+        handler=lambda args: _run_step(
+            args, "run", lambda cfg, now: run_all(cfg, now, Path(args.config), fetch=args.fetch)
+        )
     )
 
 

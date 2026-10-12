@@ -41,7 +41,7 @@ def test_render_readme():
     text = render_readme(m, Path("/out"))
     assert text.startswith("# Network discovery output\n")
     assert "## Where the data comes from" in text
-    assert "| prefixes | nautobot | https://nautobot.example/ | q | t | 3 |" in text
+    assert "| prefixes | nautobot | https://nautobot.example/ | q | t |  | 3 |" in text
     assert "| `nmap/scan-1.xml` | ndp scan |" in text
     assert "- scan: no exclude list" in text
 
@@ -56,3 +56,10 @@ def test_fetch_outputs_are_described():
     from ndp.manifest import DESCRIPTIONS
     for name in ("infra_routers", "prefixes"):
         assert DESCRIPTIONS[name]
+
+
+def test_readme_shows_who_fetched():
+    sources = {"prefixes": {**SOURCES["prefixes"], "fetched_by": "ndp fetch"}}
+    text = render_readme(build_manifest(NOW, Path("/c.yaml"), RESULTS, sources), Path("/out"))
+    assert "| Source | System | URL | Query | Fetched at | Fetched by | Items |" in text
+    assert "| prefixes | nautobot | https://nautobot.example/ | q | t | ndp fetch | 3 |" in text

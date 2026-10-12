@@ -1,4 +1,4 @@
-"""ndp run: exclude -> scan -> parse -> publish, for use without n8n (cron, by hand)."""
+"""ndp run: [fetch ->] exclude -> scan -> parse -> publish, for use without n8n (cron, by hand)."""
 
 from __future__ import annotations
 
@@ -11,12 +11,16 @@ from ndp.config import Config
 from ndp.result import StepResult, now_local
 from ndp.state import save_step_result
 from ndp.step_exclude import run_exclude
+from ndp.step_fetch import run_fetch
 from ndp.step_parse import run_parse
 from ndp.step_publish import run_publish
 from ndp.step_scan import run_scan
 
-# a failed pass 1 keeps the previous exclude.txt, so the scan can still run
-OPTIONAL_STEPS = {"exclude"}
+# a failed optional step leaves the previous files in place, so the run can go on
+OPTIONAL_STEPS = {
+    "fetch": "using the previous input files",
+    "exclude": "scanning with the previous exclude list",
+}
 
 
 def run_all(
@@ -25,9 +29,12 @@ def run_all(
     config_path: Path,
     env: Mapping[str, str] | None = None,
     runner=subprocess.run,
+    fetch: bool = False,
+    post=None,
 ) -> StepResult:
     result = StepResult("run")
-    steps = [
+    steps = [("fetch", lambda t: run_fetch(cfg, t, env=env, post=post))] if fetch else []
+    steps += [
         ("exclude", lambda t: run_exclude(cfg, t, env=env, runner=runner)),
         ("scan", lambda t: run_scan(cfg, t, env=env, runner=runner)),
         ("parse", lambda t: run_parse(cfg, t)),
@@ -47,7 +54,7 @@ def run_all(
         result.counts.update({f"{name}.{key}": value for key, value in step_result.counts.items()})
         if step_result.error:
             if name in OPTIONAL_STEPS:
-                result.warnings.append(f"{name}: {step_result.error}; scanning with the previous exclude list")
+                result.warnings.append(f"{name}: {step_result.error}; {OPTIONAL_STEPS[name]}")
                 continue
             result.error = f"{name}: {step_result.error}"
             break

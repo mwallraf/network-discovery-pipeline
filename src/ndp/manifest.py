@@ -74,13 +74,13 @@ def render_readme(manifest: dict, output_dir: Path) -> str:
         "",
         "## Where the data comes from",
         "",
-        "| Source | System | URL | Query | Fetched at | Items |",
-        "|---|---|---|---|---|---|",
+        "| Source | System | URL | Query | Fetched at | Fetched by | Items |",
+        "|---|---|---|---|---|---|---|",
     ]
     for name, src in manifest["sources"].items():
         lines.append(
             f"| {name} | {src.get('system', '')} | {src.get('url', '')} | {src.get('query', '')} "
-            f"| {src.get('fetched_at', '')} | {src.get('items', '')} |"
+            f"| {src.get('fetched_at', '')} | {src.get('fetched_by', '')} | {src.get('items', '')} |"
         )
     lines += ["", "## Steps of the last run", "", "| Step | Status | Started | Finished |", "|---|---|---|---|"]
     for step, info in manifest["steps"].items():
